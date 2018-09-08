@@ -38,7 +38,12 @@
 По собранной статистики выводить персонализированную кривую обучения.
 
 """
-from appJar import gui
+#from appJar import gui
+import threading
+from datetime import datetime
+from datetime import timedelta 
+
+
 
 study_list = dict()# Содержит библиотеку материалов для запоминания
 normal_tasks_for_today = list() # Task_id
@@ -52,7 +57,7 @@ meta:{
       update_dttm:''
 }
 """
-
+#################### Parameters and GV ####################
 # Task template:
 """
 task_id:{
@@ -84,6 +89,7 @@ learning_curve = {
         6:336
         }
 
+#################### Metadata Manager ####################
 class Meta():
     """
     Holds methods related to processing metadata
@@ -174,28 +180,41 @@ class Meta():
             
         return list_of_tasks
 
+#################### Task Manager ####################
 class Task():
     """
-    Holds methods related to introducing changes to tasks
+    Holds methods related to managing tasks
     """
-    def create_task(task_body,priority=1):
+    def create_task(task,priority=1):
         """
         Добавить задачу в список
+        
+        Таск добавляется наподобие того как реализовано в Wunderlist:
+            - Введенный текст становится заголовком
+            - Внутри таска можно добавлять файлы, подзадачи и т.п.
+        При добавлении таска "как файла", название файла 
+            становится заголовком таска (корректируемый).
+        
         """
-        def add_as_text():
+        def get_task_body(t):
             pass
-        # def add_as_hyperlink(): - Не уверен, что требуется
-            
-        def add_as_file():
+        
+        def get_task_header(t):
+            """
+            Determines name of the task
+            """
             pass
         
         today = get_date()
         today_dttm = get_dttm()
+        task_header = get_task_header(task)
+        task_body, task_type = get_task_body(task)
         
+        # Task Template
         task_obj = {
-          #'name':'', ?
-          'type':'', # Text / File / Link
-          'body':'',
+          'header':task_header,
+          'type':task_type, # Text / File / Link
+          'body':task_body,
           'status':'New',
           'priority':priority,
           'create_dttm':today_dttm,
@@ -262,27 +281,23 @@ class Task():
         """
         pass
 
+#################### Common Functions ####################
 def get_date():
-    pass
+    return datetime.date(datetime.now())
 
 def get_dttm():
-    pass
+    return datetime.now()
 
-def add_days(date,days):
-    pass
+def add_days(date,days_num):
+    return date + timedelta(days=days_num)
 
-def startup():
-    """
-    Подготовка данных к работе приложения
-    Зачитывание метаданных
-    """
-    meta_read_successful = Meta.read_meta()
-    if not meta_read_successful:
-        return False
+def days_diff(d1,d2):
+    dif = d2 - d1
+    return dif.days
     
-    # Start_UI() - to be added
-    
-    return True
+def seconds_diff(t1,t2):
+    dif = t1 - t2
+    return dif.total_seconds()
         
 def read_file_as_json(path):
     meta_file = dict()
@@ -294,12 +309,7 @@ def read_file_as_json(path):
 def write_file(path,text):
     pass
 
-# Execution
-startup()
-Meta.add_task('new task')
-print(meta_file)
-
-# GUI
+#################### GUI Manager ####################
 def press(button):
     global app
     if button == "Add":
@@ -311,10 +321,42 @@ def press(button):
         pass
     return False
 
-with gui("Study Materials", "400x200", font={'size':18}) as app:
-    app.addLabel("title", "Plan for today:")
-    app.addLabelEntry("New Task")
-    app.addButtons(["Add"], press)
+#with gui("Study Materials", "400x200", font={'size':18}) as app:
+#    app.addLabel("title", "Plan for today:")
+#    app.addLabelEntry("New Task")
+#    app.addButtons(["Add"], press)
+
+#################### Runtime Manager ####################
+
+def startup():
+    """
+    Подготовка данных к работе приложения
+    Зачитывание метаданных
+    """
+    meta_read_successful = Meta.read_meta()
+    if not meta_read_successful:
+        return False
+    
+    # Start_GUI() - to be added
+    
+    return True
+# Execution
+startup()
+Meta.add_task('new task')
+print(meta_file)
 
 
+cycle_cnt = 0
+def check_status():
+    global cycle_cnt
+    if cycle_cnt > 10:
+        print("Finishing app")
+        return False
+    else:
+        threading.Timer(5, check_status).start()
+        cycle_cnt += 1
+        print("Cycle",cycle_cnt)
+    # Add whatever should be inside the cycle.
+  
+check_status()
 
