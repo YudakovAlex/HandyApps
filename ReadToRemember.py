@@ -43,20 +43,53 @@ import threading
 from datetime import datetime
 from datetime import timedelta 
 
+#################### Time Functions ####################
+def get_date():
+    return datetime.date(datetime.now())
 
+def get_dttm():
+    return datetime.now()
+
+def add_days(date,days_num):
+    return date + timedelta(days=days_num)
+
+def days_diff(d1,d2):
+    dif = d2 - d1
+    return dif.days
+    
+def seconds_diff(t1,t2):
+    dif = t1 - t2
+    return dif.total_seconds()
+
+def time_functions_test():
+    pass
+
+#################### Global Parameters ####################
 
 study_list = dict()# Содержит библиотеку материалов для запоминания
 normal_tasks_for_today = list() # Task_id
 overdue_tasks = list() # Task_id
 all_tasks = list() # Task_id
 meta_file = dict()
+curr_dttm = get_date()
+list_of_tasks = {} # Collection of tasks objects for runtime
+
 # Meta Template
-"""
-meta:{
-      tasks:{task_id:{}},
-      update_dttm:''
+empty_meta = {
+      'tasks':{'task_id':{
+                'name':'',
+                'type':'',
+                'body':'',
+                'priority':0,
+                'create_dttm':curr_dttm,
+                'current_curve_stage':0,
+                'last_repeat_date':curr_dttm,
+                'next_repeat_date':curr_dttm,
+                'update_dttm':''
+              }},
+      'update_dttm':curr_dttm
 }
-"""
+
 #################### Parameters and GV ####################
 # Task template:
 """
@@ -75,7 +108,7 @@ task_id:{
 
 params = {
         'lib_path':'',
-        'meta_file_path':'',
+        'meta_file_path':'D:\Projects\HandyApps\RtR_Data\meta.json',
         'docs_folder':''
         }
 
@@ -117,31 +150,47 @@ class Meta():
         global overdued_tasks
         global all_tasks
         meta_file = read_file_as_json(params['meta_file_path'])
+        if meta_file=={}:
+            print("Metadata could not be read.")
+            global empty_meta
+            meta_file = empty_meta
+            #return False
         
         today = get_date()
         today_dttm = get_dttm()
         
-        for task_id, task in meta_file['tasks']:
-            lcs = learning_curve[Task['current_curve_stage']] # Learning Curve Stage
-            if ((Task['next_repeat_date'] < today and add_days(Task['last_repeat_date'],lcs) == today) 
-                or Task.next_repeat_date == today):
+        # Зачитать таски, проапдейтить статусы
+        for task_id, task_content in meta_file['tasks'].items():
+            task_obj = Task(task_id,task_content)
+            task_obj.update_statuses()
+            list_of_tasks['task_id'] = task_obj
+            
+            due_date = task_obj.get_due_date()
+            if days_diff(due_date, today) <= 0:
+                # Doing today
+                print("Do now!")
+            else:
+                # Doing not today
+                print("Not now.")
+            """
+            lcs = learning_curve[task_content['current_curve_stage']] # Learning Curve Stage
+            if ((task_content['next_repeat_date'] < today 
+                 and add_days(task_content['last_repeat_date'],lcs) == today) 
+                or task.next_repeat_date == today):
                 # Делаем сегодня
-                Task.next_repeat_date = today
-                Task.update_dttm = today_dttm # Вынести в отдельную функцию все апдейты?
-                normal_tasks_for_today.append(task_id)
+                task.next_repeat_date = today
+                task.update_dttm = today_dttm # Вынести в отдельную функцию все апдейты?
+                normal_tasks_for_today.append(task)
                 pass
-            elif Task['next_repeat_date'] < today and add_days(Task['last_repeat_date'],lcs) < today:
+            elif task_content['next_repeat_date'] < today and add_days(task_content['last_repeat_date'],lcs) < today:
                 # Опоздал, штрафная
                 overdue_tasks.append(task_id)
-                Task.mark_as_read(task_id)
+                task.mark_as_read(task_id)
             else:
                 # Время еще не пришло
                 pass
             all_tasks.append(task_id)
-            
-        
-        if meta_file == dict():
-            return False
+            """
         return True
 
     def get_tasks_for_today():
@@ -180,6 +229,9 @@ class Meta():
             
         return list_of_tasks
 
+def metadata_test():
+    pass
+
 #################### Task Manager ####################
 class Task():
     """
@@ -197,7 +249,7 @@ class Task():
         
         """
         def get_task_body(t):
-            pass
+            return (None,None)
         
         def get_task_header(t):
             """
@@ -208,7 +260,7 @@ class Task():
         today = get_date()
         today_dttm = get_dttm()
         task_header = get_task_header(task)
-        task_body, task_type = get_task_body(task)
+        (task_body, task_type) = get_task_body(task)
         
         # Task Template
         task_obj = {
@@ -280,35 +332,76 @@ class Task():
         ? со смещением кривой ?
         """
         pass
-
-#################### Common Functions ####################
-def get_date():
-    return datetime.date(datetime.now())
-
-def get_dttm():
-    return datetime.now()
-
-def add_days(date,days_num):
-    return date + timedelta(days=days_num)
-
-def days_diff(d1,d2):
-    dif = d2 - d1
-    return dif.days
     
-def seconds_diff(t1,t2):
-    dif = t1 - t2
-    return dif.total_seconds()
+    def update_statuses(self):
         
-def read_file_as_json(path):
-    meta_file = dict()
-    meta_file['tasks'] = dict()
-    meta_file['update_dttm'] = get_dttm()
-    print(meta_file)
-    return meta_file
+        pass
     
-def write_file(path,text):
+    def get_due_date(self):
+        return get_date()
+    
+    def __init__(self,task_id,task_content):
+        self._id = task_id
+        self._name = task_content['name']
+        self._type = task_content['type']
+        self._body = task_content['body']
+        self._priority = task_content['priority']
+        self._create_dttm = task_content['create_dttm']
+        self._current_curve_stage = task_content['current_curve_stage']
+        self._last_repeat_date = task_content['last_repeat_date']
+        self._next_repeat_date = task_content['next_repeat_date']
+        self._update_dttm = task_content['update_dttm']
+        
+        return None
+
+def task_test():
     pass
 
+
+#################### File Manager ####################
+import json
+import os
+
+def read_file_as_json(path):
+    #meta_file = dict()
+    #meta_file['tasks'] = dict()
+    #meta_file['update_dttm'] = get_dttm()
+    #print(meta_file)
+    data = {}
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+    else:
+        print("File",path,"not found.")
+        return {}
+    return data
+    
+def write_file(path,data):
+    with open(path, 'w') as outfile:
+        json.dump(data, outfile)
+
+def file_manager_test():
+    path = "D:\\Projects\\HandyApps\\Test\\file_manager_test.json"
+    data = {
+            "feature1":"Value1",
+            "feature2":2,
+            "feature3":["Value3","Value4"],
+            "feature4":{
+                    "feature5":"Value5",
+                    "feature6":"Value6",
+                    }
+            }
+    write_file(path,data)
+    control_data = read_file_as_json(path)
+    os.remove(path)
+    
+    if control_data==data:
+        print("File manager test is passed.")
+        return True
+    else:
+        print("File manager test is FAILED!")
+        return False
+    
 #################### GUI Manager ####################
 def press(button):
     global app
@@ -326,6 +419,13 @@ def press(button):
 #    app.addLabelEntry("New Task")
 #    app.addButtons(["Add"], press)
 
+
+#################### Test Manager ####################
+file_manager_test()
+task_test()
+metadata_test()
+time_functions_test()
+
 #################### Runtime Manager ####################
 
 def startup():
@@ -342,8 +442,8 @@ def startup():
     return True
 # Execution
 startup()
-Meta.add_task('new task')
-print(meta_file)
+#Meta.add_task('new task')
+#print(meta_file)
 
 
 cycle_cnt = 0
@@ -358,5 +458,5 @@ def check_status():
         print("Cycle",cycle_cnt)
     # Add whatever should be inside the cycle.
   
-check_status()
+#check_status()
 
