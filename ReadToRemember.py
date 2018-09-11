@@ -64,26 +64,8 @@ def seconds_diff(t1,t2):
     dif = t1 - t2
     return dif.total_seconds()
 
-def date_to_string(date):
-    pass
-
-def string_to_date(string):
-    date = None
-    if type(string) == str:
-        date = string
-    return date
-
-def dttm_to_string(dttm):
-    pass
-
-def string_to_dttm(string):
-    pass
-
-
 def time_functions_test():
     pass
-
-print(date_to_string(get_date()))
 
 #################### Global Parameters ####################
 
@@ -129,7 +111,10 @@ task_id:{
 
 params = {
         'lib_path':'',
-        'meta_file_path':'D:\\Projects\\HandyApps\\RtR_Data\\meta.json',
+        #'meta_file_path':'D:\\Projects\\HandyApps\\RtR_Data\\meta.json',
+        'meta_file_path':'C:\\Users\\Aleksander_Yudakov\\Documents\\PythonProjects\\GIT\\RtR_Data\\meta.json',
+        #'test_dir_path':'D:\\Projects\\HandyApps\\Test\\file_manager_test.json',
+        'test_dir_path':'C:\\Users\\Aleksander_Yudakov\\Documents\\PythonProjects\\GIT\\Test\\file_manager_test.json',
         'docs_folder':''
         }
 
@@ -176,26 +161,18 @@ class Meta():
         global normal_tasks_for_today
         global overdued_tasks
         global all_tasks
-        print("--- read_meta 1 ---")
         meta_file = read_file_as_json(params['meta_file_path'])
-        print("--- read_meta 2 ---")
         if meta_file=={}:
             print("Metadata could not be read. Creating new metadata file",params['meta_file_path'])
             global empty_meta
-            print("all good 1")
             meta_file = empty_meta
-            print("all good 2")
-            print("meta_file:",meta_file)
-            write_file(params['meta_file_path'],meta_file)
-            print("all good 3")
+            write_dict_file(params['meta_file_path'],meta_file)
             #return False
-        print("--- 3 ---")
         
         today = get_date()
-        today_dttm = get_dttm()
+        #today_dttm = get_dttm()
         
         # Зачитать таски, проапдейтить статусы
-        print("Starting loop")
         for task_id, task_content in meta_file['tasks'].items():
             
             task_obj = Task(task_id,task_content)
@@ -205,11 +182,10 @@ class Meta():
             due_date = task_obj.get_due_date()
             if days_diff(due_date, today) <= 0:
                 # Doing today
-                print("Do now!")
+                pass
             else:
                 # Doing not today
-                print("Not now.")
-        print("Finished loop")
+                pass
 
         """
         lcs = learning_curve[task_content['current_curve_stage']] # Learning Curve Stage
@@ -409,6 +385,25 @@ def task_test():
     pass
 
 
+#################### Converters ####################
+def dict_el_to_str(d):
+    """
+    Convert dict elems of known class types to string 
+        and returns converted dict.
+    Known types: 
+        - date
+        - dttm
+    """
+    date_type = get_date()
+    dttm_type = get_dttm()
+    for k,v in d.items():
+        if type(v) == dict:
+            d[k] = dict_el_to_str(v)
+        elif (type(v) is type(date_type)
+            or type(v) is type(dttm_type)):
+            d[k] = str(v)
+    return d
+
 #################### File Manager ####################
 def read_file_as_json(path):
     #meta_file = dict()
@@ -417,35 +412,28 @@ def read_file_as_json(path):
     #print(meta_file)
     data = {}
     print("Path to meta:",path)
-    print("--- 11 ---")
     if os.path.exists(path):
-        print("--- 22 ---")
         with open(path, 'r') as f:
-            print("--- 33 ---")
-            print("f:",f)
             data = json.load(f)
     else:
-        print("--- 44 ---")
         print("File",path,"not found.")
         return {}
-    print("data",data)
     return data
     
-def write_file(path,data):
+def write_dict_file(path,data_dict):
     """
-    Writes file to disk.
+    Writes dict to file on disk.
     """
-    print("Writing now... 1")
-    #with open(path, 'w') as outfile:
-    #    print("Writing now... 2")
-    #    json.dump(data, outfile)
-    #print("Writing now... 3")
+    # Make dir first
+    if not os.path.exists(path[0:path.rfind("\\")]):
+        os.makedirs(path[0:path.rfind("\\")])
+        
     with open(path, 'w') as f:
-        json.dump(data, f, ensure_ascii=False)
+        json.dump(dict_el_to_str(data_dict), f, ensure_ascii=False)
     return True
 
 def file_manager_test():
-    path = "D:\\Projects\\HandyApps\\Test\\file_manager_test.json"
+    path = params['test_dir_path']
     data = {
             "feature1":"Value1",
             "feature2":2,
@@ -455,7 +443,7 @@ def file_manager_test():
                     "feature6":"Value6",
                     }
             }
-    write_file(path,data)
+    write_dict_file(path,data)
     control_data = read_file_as_json(path)
     os.remove(path)
     
@@ -487,22 +475,22 @@ def test_manager():
     if file_manager_test():
         print("File manager test is passed.")
     else:
-        print("File manager test is FAILED!")
+        print("!!! File manager test is FAILED!")
     
     if task_test():
         print("Task test is passed.")
     else:
-        print("Task test is FAILED!")
+        print("!!! Task test is FAILED!")
     
     if metadata_test():
         print("Metadata test is passed.")
     else:
-        print("Metadata test is FAILED!")
+        print("!!! Metadata test is FAILED!")
     
     if time_functions_test():
         print("Time functions test is passed.")
     else:
-        print("Time functions test is FAILED!")
+        print("!!! Time functions test is FAILED!")
     
     return True
     
@@ -518,14 +506,12 @@ def startup():
     meta_read_successful = Meta.read_meta()
     if not meta_read_successful:
         return False
-    
     # Start_GUI() - to be added
-    
     return True
 # Execution
 startup()
 #Meta.add_task('new task')
-print("App is started")
+print("App is running.")
 
 
 cycle_cnt = 0
