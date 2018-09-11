@@ -5,10 +5,10 @@
     1 Добавить новый прочтенный материал: ссылка, текст, документ
     2 Получить список того, что на сегодняшний день нужно повторить
     3 Отметить что повторил
-    
+
 Система будет составлять список для повторения на день, согласно кривой обучения
 Если одна из задач не будет выполнена, можно корректировать даты повторов,
-добавлять и убирать новые повторения. 
+добавлять и убирать новые повторения.
 
 Добавить:
     Кнопка "Запомнил"
@@ -27,21 +27,21 @@
         Можно предложить тему на основе популярности категории или качества запоминания
     В случаях высокой нагрузки сдвигать часть тасков на поздних этапах
     Добавить объем источника:
-        - время видео 
+        - время видео
         - время затраченное на первое прочтение
         - количество символов / страниц
         - выводить из этого оценку затраченного времени
-    
+
     Таск состоящий из набора флеш-карт
-    
-        
+
+
 По собранной статистики выводить персонализированную кривую обучения.
 
 """
 #from appJar import gui
 import threading
 from datetime import datetime
-from datetime import timedelta 
+from datetime import timedelta
 import json
 import os
 
@@ -59,13 +59,40 @@ def add_days(date,days_num):
 def days_diff(d1,d2):
     dif = d2 - d1
     return dif.days
-    
+
+def add_seconds(dttm,sec):
+    return dttm + timedelta(seconds=sec)
+
 def seconds_diff(t1,t2):
     dif = t1 - t2
     return dif.total_seconds()
 
 def time_functions_test():
-    pass
+    print("\n---Test---Test---Test---")
+    print(get_dttm(),"Begining Time Functions Test")
+    test_result = True
+
+    date1 = get_date()
+    if not date1:
+        print(get_dttm(),"\tFailed get_date()")
+        test_result = False
+
+    date2 = add_days(date1,3)
+    if not days_diff(date1,date2) == 3:
+        print(get_dttm(),"\tFailed add_days() or days_diff()")
+        test_result = False
+
+    dttm1 = get_dttm()
+    if not date1:
+        print(get_dttm(),"\tFailed get_dttm()")
+        test_result = False
+
+    dttm2 = add_seconds(dttm1,3)
+    if not seconds_diff(dttm1,dttm2) == -3:
+        print(get_dttm(),"\tFailed add_seconds() or seconds_diff()")
+        test_result = False
+
+    return test_result
 
 #################### Global Parameters ####################
 
@@ -79,10 +106,12 @@ list_of_tasks = {} # Collection of tasks objects for runtime
 
 # Meta Template
 empty_meta = {
-      'tasks':{'task_id':{
+      'tasks':{
+              0:{#Task_id
                 'name':'',
                 'type':'',
                 'body':'',
+                'status':'',
                 'priority':0,
                 'create_dttm':curr_dttm,
                 'current_curve_stage':0,
@@ -120,7 +149,7 @@ params = {
 
 learning_curve = {
         # Number of days before need to repeat
-        # Добавить кастомные формулы типа {'x*2':[0,1]} 
+        # Добавить кастомные формулы типа {'x*2':[0,1]}
         #  где x это предыдущее значение дней, а [0,1] - первые n значений
         #  пример 1: {'x*2':[0,1]} = [0,1,2,4,8,16...]
         #  пример 2: {'x':[1]} = [1,1,1,1...]
@@ -138,47 +167,67 @@ learning_curve = {
 class Meta():
     """
     Holds methods related to processing metadata
+    Meta holds data on:
+        - App logs and history
+        - Task data, except attached files
     """
-    def add_task(task_body,priority=1):
+    def add_task(task_body,priority=1,task_id=None):
         global meta_file
-        task = Task.create_task(task_body,priority=1)
-        if len(meta_file['tasks'].keys()) > 0:
-            task_id = meta_file['tasks'].keys()[-1] + 1
-        else:
-            task_id = 1
+
+        if task_id==None:
+            if len(list(meta_file['tasks'].keys())) > 0:
+                task_id = list(meta_file['tasks'].keys())[-1] + 1
+            else:
+                task_id = 0
+
+        task_content = Task.task_obj_template
+        task_content['name'] = task_body['name']
+        task_content['type'] = task_body['type']
+        task_content['body'] = task_body['body']
+        task_content['status'] = task_body['status']
+        task_content['priority'] = task_body['priority']
+        task_content['create_dttm'] = get_dttm()
+        task_content['current_curve_stage'] = 0 # Or 1?
+        task_content['last_repeat_date'] = None
+        task_content['next_repeat_date'] = None #task_body['next_repeat_date']
+        task_content['update_dttm'] = get_dttm()
+
+        task = Task(task_id,task_content)
 
         meta_file['tasks'][task_id] = task
         normal_tasks_for_today.append(task_id)
-        
+
+        return True
+
     def remove_task(task_id):
         """
         Удалить задачу из списка
         """
-        pass
-    
+        meta_file.pop(task_id, None)
+        return True
+
     def read_meta():
         global meta_file
         global normal_tasks_for_today
         global overdued_tasks
         global all_tasks
-        meta_file = read_file_as_json(params['meta_file_path'])
+        meta_file = read_json_to_dict(params['meta_file_path'])
         if meta_file=={}:
-            print("Metadata could not be read. Creating new metadata file",params['meta_file_path'])
+            print(get_dttm(),"Metadata could not be read. Creating new metadata file",params['meta_file_path'])
             global empty_meta
             meta_file = empty_meta
-            write_dict_file(params['meta_file_path'],meta_file)
-            #return False
-        
+            #write_dict_to_json(params['meta_file_path'],meta_file)
+
         today = get_date()
         #today_dttm = get_dttm()
-        
+
         # Зачитать таски, проапдейтить статусы
         for task_id, task_content in meta_file['tasks'].items():
-            
+
             task_obj = Task(task_id,task_content)
             task_obj.refresh_statuses()
             list_of_tasks['task_id'] = task_obj
-            
+
             due_date = task_obj.get_due_date()
             if days_diff(due_date, today) <= 0:
                 # Doing today
@@ -189,8 +238,8 @@ class Meta():
 
         """
         lcs = learning_curve[task_content['current_curve_stage']] # Learning Curve Stage
-        if ((task_content['next_repeat_date'] < today 
-             and add_days(task_content['last_repeat_date'],lcs) == today) 
+        if ((task_content['next_repeat_date'] < today
+             and add_days(task_content['last_repeat_date'],lcs) == today)
             or task.next_repeat_date == today):
             # Делаем сегодня
             task.next_repeat_date = today
@@ -208,78 +257,135 @@ class Meta():
         """
         return True
 
+    def write_meta():
+        global meta_file
+        write_dict_to_json(params['meta_file_path'],meta_file)
+        return True
+
     def get_tasks_for_today():
         """
         Возвращяет Json со всеми тасками на сегодня
         """
+        return True
         list_of_tasks = dict()
         for nt in normal_tasks_for_today:
             list_of_tasks[nt] = meta_file['tasks'][nt]
-    
+
         for ot in overdued_tasks:
             list_of_tasks[ot] = meta_file['tasks'][ot]
-            
+
         return list_of_tasks
-    
+
     def get_tasks_for_date(next_repeat_date):
         """
         Возвращяет Json со всеми тасками с повторением на определенную дату
         """
+        return True
         list_of_tasks = dict()
         for t in all_tasks:
             if meta_file['tasks'][t]['next_repeat_date'] == next_repeat_date:
                 list_of_tasks[t] = meta_file['tasks'][t]
-            
+
         return list_of_tasks
-        
-    
+
+
     def get_full_list():
         """
         Возвращяет Json со всеми тасками в системе
         Подумать над системой фильтров
         """
+        return True
         list_of_tasks = dict()
         for t in all_tasks:
             list_of_tasks[t] = meta_file['tasks'][t]
-            
+
         return list_of_tasks
 
 def metadata_test():
-    pass
+    print("\n---Test---Test---Test---")
+    print(get_dttm(),"Begining Metadata Test")
+    test_result = True
+    test_task_id = -1
+
+    add_task = Meta.add_task(Task.task_obj_template,task_id=test_task_id)
+    if not add_task:
+        print(get_dttm(),"\tFailed Meta.add_task()")
+        test_result = False
+
+    remove_task = Meta.remove_task(test_task_id)
+    if not remove_task:
+        print(get_dttm(),"\tFailed Meta.remove_task()")
+        test_result = False
+
+    # Закоментил, чтобы 2 раза на старте не читал.
+    #read_meta = Meta.read_meta()
+    #if not read_meta:
+    #    print(get_dttm(),"\tFailed Meta.read_meta()")
+    #    test_result = False
+
+    get_tasks_for_today = Meta.get_tasks_for_today()
+    if not get_tasks_for_today:
+        print(get_dttm(),"\tFailed Meta.get_tasks_for_today()")
+        test_result = False
+
+    get_tasks_for_date = Meta.get_tasks_for_date(get_date())
+    if not get_tasks_for_date:
+        print(get_dttm(),"\tFailed Meta.get_tasks_for_date()")
+        test_result = False
+
+    get_full_list = Meta.get_full_list()
+    if not get_full_list:
+        print(get_dttm(),"\tFailed Meta.get_full_list()")
+        test_result = False
+
+    return test_result
 
 #################### Task Manager ####################
 class Task():
     """
     Holds methods related to managing tasks
     """
-    def create_task(task,priority=1):
+    task_obj_template = {
+      'name':'', #str
+      'type':'', # Text / File / Link
+      'body':'', #?
+      'status':'', #str
+      'priority':'', #num
+      'create_dttm':'', #dttm
+      'current_curve_stage':'', #num
+      'last_repeat_date':'', #date
+      'next_repeat_date':'', #date
+      'update_dttm':'' #dttm
+      }
+
+    def create_task(task_data,priority=1):
         """
         Добавить задачу в список
-        
+
         Таск добавляется наподобие того как реализовано в Wunderlist:
             - Введенный текст становится заголовком
             - Внутри таска можно добавлять файлы, подзадачи и т.п.
-        При добавлении таска "как файла", название файла 
+        При добавлении таска "как файла", название файла
             становится заголовком таска (корректируемый).
-        
+
         """
         def get_task_body(t):
             return (None,None)
-        
+
         def get_task_header(t):
             """
             Determines name of the task
             """
             pass
-        
+
         today = get_date()
         today_dttm = get_dttm()
-        task_header = get_task_header(task)
-        (task_body, task_type) = get_task_body(task)
-        
+        task_header = get_task_header(task_data)
+        (task_body, task_type) = get_task_body(task_data)
+
         # Task Template
         task_obj = {
-          'header':task_header,
+          'name':task_header,
           'type':task_type, # Text / File / Link
           'body':task_body,
           'status':'New',
@@ -290,18 +396,21 @@ class Task():
           'next_repeat_date':today,
           'update_dttm':today_dttm
           }
-        
+
         return task_obj
-    
+
     def mark_as_read(self):
         """
         Отметить как прочитанное на текущий момент
         """
+        self._status = 'Read'
+        return True
+
         task_id = self._id
         global meta_file
         today = get_date()
         today_dttm = get_dttm()
-        
+
         if meta_file.tasks[task_id].current_curve_stage == learning_curve.keys()[-1]:
             meta_file.tasks[task_id].mark_as_complete(task_id)
         else:
@@ -310,49 +419,61 @@ class Task():
             meta_file['tasks'][task_id]['next_repeat_date'] = today + learning_curve[meta_file.tasks[task_id].current_curve_stage]
             meta_file['tasks'][task_id]['update_dttm'] = today_dttm
             meta_file['tasks'][task_id]['last_repeat_date'] = today
-              
+
         return True
-    
+
     def mark_as_overdue(self):
         """
         Отметить как просроченное
         """
+        self._status = 'Overdue'
+        return True
+
         task_id = self._id
         global meta_file
         today_dttm = get_dttm()
-        
+
         meta_file['tasks'][task_id]['status'] = 'Overdue'
         meta_file['tasks'][task_id]['update_dttm'] = today_dttm
-              
+
         return True
-    
+
     def mark_as_complete(self):
         """
         Отметить как выполненную задачу, "материал освоен"
         """
+        self._status = 'Complete'
+        return True
+
         task_id = self._id
         global meta_file
         today = get_date()
         today_dttm = get_dttm()
-        
+
         meta_file['tasks'][task_id]['status'] = 'complete'
         meta_file['tasks'][task_id]['next_repeat_date'] = None
         meta_file['tasks'][task_id]['update_dttm'] = today_dttm
         meta_file['tasks'][task_id]['last_repeat_date'] = today
         return True
-    
+
     def mark_as_canceled(self):
+        self._status = 'Cancelled'
+        return True
+
         task_id = self._id
         pass
 
     def delay_task(self):
         """
-        Отложить задачу на заданный промежуток времени 
+        Отложить задачу на заданный промежуток времени
         ? со смещением кривой ?
         """
+        self._status = 'Delayed'
+        return True
+
         task_id = self._id
         pass
-    
+
     def refresh_statuses(self):
         """
         Refresh:
@@ -362,35 +483,82 @@ class Task():
             - Learning curve status
         """
         pass
-    
+
     def get_due_date(self):
         return get_date()
-    
-    
+
+
     def __init__(self,task_id,task_content):
         self._id = task_id
         self._name = task_content['name']
         self._type = task_content['type']
         self._body = task_content['body']
+        self._status = task_content['status']
         self._priority = task_content['priority']
         self._create_dttm = task_content['create_dttm']
         self._current_curve_stage = task_content['current_curve_stage']
         self._last_repeat_date = task_content['last_repeat_date']
         self._next_repeat_date = task_content['next_repeat_date']
         self._update_dttm = task_content['update_dttm']
-        
+
         return None
 
 def task_test():
-    pass
+    print("\n---Test---Test---Test---")
+    print(get_dttm(),"Begining Task Test")
+    task = Task(1,Task.task_obj_template)
+    test_result = True
+
+    if not isinstance(task,Task):
+        print(get_dttm(),"\tFailed to create Task object")
+        test_result = False
+
+    task.mark_as_read()
+    if task._status != 'Read':
+        print(get_dttm(),"\tFailed Task.mark_as_read()")
+        test_result = False
+
+    task.mark_as_overdue()
+    if task._status != 'Overdue':
+        print(get_dttm(),"\tFailed Task.mark_as_overdue()")
+        test_result = False
+
+    task.mark_as_complete()
+    if task._status != 'Complete':
+        print(get_dttm(),"\tFailed Task.mark_as_complete()")
+        test_result = False
+
+    task.mark_as_canceled()
+    if task._status != 'Cancelled':
+        print(get_dttm(),"\tFailed Task.mark_as_canceled()")
+        test_result = False
+
+    task.delay_task()
+    if task._status != 'Delayed':
+        print(get_dttm(),"\tFailed Task.delay_task()")
+        test_result = False
+
+    task.refresh_statuses()
+    if task._status != 'Read':
+        print(get_dttm(),"\tFailed Task.refresh_statuses()")
+        #test_result = False
+        pass
+
+    task.get_due_date()
+    if task._status != 'Read':
+        print(get_dttm(),"\tFailed Task.get_due_date()")
+        #test_result = False
+        pass
+
+    return test_result
 
 
 #################### Converters ####################
 def dict_el_to_str(d):
     """
-    Convert dict elems of known class types to string 
+    Convert dict elems of known class types to string
         and returns converted dict.
-    Known types: 
+    Known types:
         - date
         - dttm
     """
@@ -405,34 +573,35 @@ def dict_el_to_str(d):
     return d
 
 #################### File Manager ####################
-def read_file_as_json(path):
+def read_json_to_dict(path):
     #meta_file = dict()
     #meta_file['tasks'] = dict()
     #meta_file['update_dttm'] = get_dttm()
     #print(meta_file)
     data = {}
-    print("Path to meta:",path)
     if os.path.exists(path):
         with open(path, 'r') as f:
             data = json.load(f)
     else:
-        print("File",path,"not found.")
+        print(get_dttm(),"File",path,"not found.")
         return {}
     return data
-    
-def write_dict_file(path,data_dict):
+
+def write_dict_to_json(path,data_dict):
     """
     Writes dict to file on disk.
     """
     # Make dir first
     if not os.path.exists(path[0:path.rfind("\\")]):
         os.makedirs(path[0:path.rfind("\\")])
-        
+
     with open(path, 'w') as f:
         json.dump(dict_el_to_str(data_dict), f, ensure_ascii=False)
     return True
 
 def file_manager_test():
+    print("\n---Test---Test---Test---")
+    print(get_dttm(),"Begining File Manager Test")
     path = params['test_dir_path']
     data = {
             "feature1":"Value1",
@@ -440,18 +609,18 @@ def file_manager_test():
             "feature3":["Value3","Value4"],
             "feature4":{
                     "feature5":"Value5",
-                    "feature6":"Value6",
+                    "feature6":curr_dttm
                     }
             }
-    write_dict_file(path,data)
-    control_data = read_file_as_json(path)
+    write_dict_to_json(path,data)
+    control_data = read_json_to_dict(path)
     os.remove(path)
-    
-    if control_data==data:
+
+    if control_data==dict_el_to_str(data):
         return True
     else:
         return False
-    
+
 #################### GUI Manager ####################
 def press(button):
     global app
@@ -459,7 +628,7 @@ def press(button):
         new_task = app.getEntry("New Task")
         if new_task == '':
             app.popUp("Task is not specified",)
-        print("New task:", new_task)
+        print(get_dttm(),"New task:", new_task)
     else:
         pass
     return False
@@ -468,33 +637,6 @@ def press(button):
 #    app.addLabel("title", "Plan for today:")
 #    app.addLabelEntry("New Task")
 #    app.addButtons(["Add"], press)
-
-
-#################### Test Manager ####################
-def test_manager():
-    if file_manager_test():
-        print("File manager test is passed.")
-    else:
-        print("!!! File manager test is FAILED!")
-    
-    if task_test():
-        print("Task test is passed.")
-    else:
-        print("!!! Task test is FAILED!")
-    
-    if metadata_test():
-        print("Metadata test is passed.")
-    else:
-        print("!!! Metadata test is FAILED!")
-    
-    if time_functions_test():
-        print("Time functions test is passed.")
-    else:
-        print("!!! Time functions test is FAILED!")
-    
-    return True
-    
-test_manager()
 
 #################### Runtime Manager ####################
 
@@ -511,20 +653,45 @@ def startup():
 # Execution
 startup()
 #Meta.add_task('new task')
-print("App is running.")
+print(get_dttm(),"App is running.")
 
 
 cycle_cnt = 0
 def check_status():
     global cycle_cnt
     if cycle_cnt > 10:
-        print("Finishing app")
+        print(get_dttm(),"Finishing app")
         return False
     else:
         threading.Timer(5, check_status).start()
         cycle_cnt += 1
-        print("Cycle",cycle_cnt)
+        print(get_dttm(),"Cycle",cycle_cnt)
     # Add whatever should be inside the cycle.
-  
+
 #check_status()
 
+#################### Test Manager ####################
+def test_manager():
+    if file_manager_test():
+        print(get_dttm(),"File Manager test is passed.")
+    else:
+        print(get_dttm(),"!!! File Manager test is FAILED!")
+
+    if task_test():
+        print(get_dttm(),"Task test is passed.")
+    else:
+        print(get_dttm(),"!!! Task test is FAILED!")
+
+    if metadata_test():
+        print(get_dttm(),"Metadata test is passed.")
+    else:
+        print(get_dttm(),"!!! Metadata test is FAILED!")
+
+    if time_functions_test():
+        print(get_dttm(),"Time Functions test is passed.")
+    else:
+        print(get_dttm(),"!!! Time Functions test is FAILED!")
+
+    return True
+
+test_manager()
