@@ -44,7 +44,21 @@ from datetime import datetime
 from datetime import timedelta
 import json
 import os
+import pprint
+pp = pprint.PrettyPrinter(indent=2)
 
+def log(text,lvl=0):
+    if type(text) == list:
+        str_text = ""
+        for el in text:
+            str_text = str_text + " " + str(el)
+        print(get_dttm(),str_text)
+    elif type(text) == dict:
+        print(get_dttm())
+        pp.pprint(dict_el_to_str(text))
+    else:
+        print(get_dttm(),text)
+    return False
 
 #################### Time Functions ####################
 def get_date():
@@ -68,28 +82,28 @@ def seconds_diff(t1,t2):
     return dif.total_seconds()
 
 def time_functions_test():
-    print("\n---Test---Test---Test---")
-    print(get_dttm(),"Begining Time Functions Test")
+    #log("\n---Test---Test---Test---")
+    #log(get_dttm(),"Begining Time Functions Test")
     test_result = True
 
     date1 = get_date()
     if not date1:
-        print(get_dttm(),"\tFailed get_date()")
+        log("\tFailed get_date()")
         test_result = False
 
     date2 = add_days(date1,3)
     if not days_diff(date1,date2) == 3:
-        print(get_dttm(),"\tFailed add_days() or days_diff()")
+        log("\tFailed add_days() or days_diff()")
         test_result = False
 
     dttm1 = get_dttm()
     if not date1:
-        print(get_dttm(),"\tFailed get_dttm()")
+        log("\tFailed get_dttm()")
         test_result = False
 
     dttm2 = add_seconds(dttm1,3)
     if not seconds_diff(dttm1,dttm2) == -3:
-        print(get_dttm(),"\tFailed add_seconds() or seconds_diff()")
+        log("\tFailed add_seconds() or seconds_diff()")
         test_result = False
 
     return test_result
@@ -101,43 +115,30 @@ normal_tasks_for_today = list() # Task_id
 overdue_tasks = list() # Task_id
 all_tasks = list() # Task_id
 meta_file = dict()
-curr_dttm = get_date()
 list_of_tasks = {} # Collection of tasks objects for runtime
 
+curr_date = get_date()
+curr_dttm = get_dttm()
+
 # Meta Template
-empty_meta = {
+meta_template = {
       'tasks':{
               0:{#Task_id
-                'name':'',
+                'name':'Welcom to ReadToRemeber!',
                 'type':'',
                 'body':'',
-                'status':'',
+                'status':'New',
                 'priority':0,
                 'create_dttm':curr_dttm,
                 'current_curve_stage':0,
-                'last_repeat_date':curr_dttm,
-                'next_repeat_date':curr_dttm,
+                'last_repeat_date':curr_date,
+                'next_repeat_date':curr_date,
                 'update_dttm':''
               }},
       'update_dttm':curr_dttm
 }
 
 #################### Parameters and GV ####################
-# Task template:
-"""
-task_id:{
-      name:'',
-      type:'',
-      body:'',
-      'priority':'',
-      create_dttm:'',
-      current_curve_stage:'',
-      last_repeat_date:'',
-      next_repeat_date:'',
-      update_dttm:''
-}
-"""
-
 params = {
         'lib_path':'',
         #'meta_file_path':'D:\\Projects\\HandyApps\\RtR_Data\\meta.json',
@@ -180,7 +181,7 @@ class Meta():
             else:
                 task_id = 0
 
-        task_content = Task.task_obj_template
+        task_content = dict(Task.task_template)
         task_content['name'] = task_body['name']
         task_content['type'] = task_body['type']
         task_content['body'] = task_body['body']
@@ -213,9 +214,9 @@ class Meta():
         global all_tasks
         meta_file = read_json_to_dict(params['meta_file_path'])
         if meta_file=={}:
-            print(get_dttm(),"Metadata could not be read. Creating new metadata file",params['meta_file_path'])
-            global empty_meta
-            meta_file = empty_meta
+            log("Metadata could not be read. Creating new metadata file" + params['meta_file_path'])
+            global meta_template
+            meta_file = dict(meta_template)
             #write_dict_to_json(params['meta_file_path'],meta_file)
 
         today = get_date()
@@ -302,40 +303,40 @@ class Meta():
         return list_of_tasks
 
 def metadata_test():
-    print("\n---Test---Test---Test---")
-    print(get_dttm(),"Begining Metadata Test")
+    #log("\n---Test---Test---Test---")
+    #log("Begining Metadata Test")
     test_result = True
     test_task_id = -1
 
-    add_task = Meta.add_task(Task.task_obj_template,task_id=test_task_id)
+    add_task = Meta.add_task(dict(Task.task_template),task_id=test_task_id)
     if not add_task:
-        print(get_dttm(),"\tFailed Meta.add_task()")
+        log("\tFailed Meta.add_task()")
         test_result = False
 
     remove_task = Meta.remove_task(test_task_id)
     if not remove_task:
-        print(get_dttm(),"\tFailed Meta.remove_task()")
+        log("\tFailed Meta.remove_task()")
         test_result = False
 
     # Закоментил, чтобы 2 раза на старте не читал.
     #read_meta = Meta.read_meta()
     #if not read_meta:
-    #    print(get_dttm(),"\tFailed Meta.read_meta()")
+    #    log("\tFailed Meta.read_meta()")
     #    test_result = False
 
     get_tasks_for_today = Meta.get_tasks_for_today()
     if not get_tasks_for_today:
-        print(get_dttm(),"\tFailed Meta.get_tasks_for_today()")
+        log("\tFailed Meta.get_tasks_for_today()")
         test_result = False
 
     get_tasks_for_date = Meta.get_tasks_for_date(get_date())
     if not get_tasks_for_date:
-        print(get_dttm(),"\tFailed Meta.get_tasks_for_date()")
+        log("\tFailed Meta.get_tasks_for_date()")
         test_result = False
 
     get_full_list = Meta.get_full_list()
     if not get_full_list:
-        print(get_dttm(),"\tFailed Meta.get_full_list()")
+        log("\tFailed Meta.get_full_list()")
         test_result = False
 
     return test_result
@@ -345,12 +346,12 @@ class Task():
     """
     Holds methods related to managing tasks
     """
-    task_obj_template = {
+    task_template = {
       'name':'', #str
       'type':'', # Text / File / Link
       'body':'', #?
-      'status':'', #str
-      'priority':'', #num
+      'status':'New', #str
+      'priority':0, #num
       'create_dttm':'', #dttm
       'current_curve_stage':'', #num
       'last_repeat_date':'', #date
@@ -460,8 +461,9 @@ class Task():
         self._status = 'Cancelled'
         return True
 
-        task_id = self._id
-        pass
+    def mark_as_new(self):
+        self._status = 'New'
+        return True
 
     def delay_task(self):
         """
@@ -470,9 +472,6 @@ class Task():
         """
         self._status = 'Delayed'
         return True
-
-        task_id = self._id
-        pass
 
     def refresh_statuses(self):
         """
@@ -487,6 +486,21 @@ class Task():
     def get_due_date(self):
         return get_date()
 
+    def task_to_dict(self):
+        task_content = dict(Task.task_template)
+        task_content['name'] = self._name
+        task_content['type'] = self._type
+        task_content['body'] = self._body 
+        task_content['status'] = self._status 
+        task_content['priority'] = self._priority 
+        task_content['create_dttm'] = self._create_dttm 
+        task_content['current_curve_stage'] = self._current_curve_stage 
+        task_content['last_repeat_date'] = self._last_repeat_date 
+        task_content['next_repeat_date'] = self._next_repeat_date 
+        task_content['update_dttm'] = self._update_dttm 
+
+        return task_content
+        
 
     def __init__(self,task_id,task_content):
         self._id = task_id
@@ -504,49 +518,64 @@ class Task():
         return None
 
 def task_test():
-    print("\n---Test---Test---Test---")
-    print(get_dttm(),"Begining Task Test")
-    task = Task(1,Task.task_obj_template)
+    #log("\n---Test---Test---Test---")
+    #log("Begining Task Test")
+    task_content = dict(Task.task_template)
+    task = Task(1,task_content)
     test_result = True
 
     if not isinstance(task,Task):
-        print(get_dttm(),"\tFailed to create Task object")
+        log("\tFailed to create Task object")
         test_result = False
 
     task.mark_as_read()
     if task._status != 'Read':
-        print(get_dttm(),"\tFailed Task.mark_as_read()")
+        log("\tFailed Task.mark_as_read()")
         test_result = False
 
     task.mark_as_overdue()
     if task._status != 'Overdue':
-        print(get_dttm(),"\tFailed Task.mark_as_overdue()")
+        log("\tFailed Task.mark_as_overdue()")
         test_result = False
 
     task.mark_as_complete()
     if task._status != 'Complete':
-        print(get_dttm(),"\tFailed Task.mark_as_complete()")
+        log("\tFailed Task.mark_as_complete()")
         test_result = False
 
     task.mark_as_canceled()
     if task._status != 'Cancelled':
-        print(get_dttm(),"\tFailed Task.mark_as_canceled()")
+        log("\tFailed Task.mark_as_canceled()")
         test_result = False
 
     task.delay_task()
     if task._status != 'Delayed':
-        print(get_dttm(),"\tFailed Task.delay_task()")
+        log("\tFailed Task.delay_task()")
         test_result = False
 
+    task.mark_as_new()
+    if task._status != 'New':
+        log("\tFailed Task.mark_as_new()")
+        test_result = False
+
+    task_content2 = task.task_to_dict()
+    if task_content != task_content2:
+        log("\tFailed Task.task_to_dict()")
+        log("\nSource template")
+        pp.pprint(dict_el_to_str(task_content))
+        log("\nTarget template")
+        pp.pprint(dict_el_to_str(task_content2))
+        test_result = False
+        
     task.refresh_statuses()
     if task._status != 'Read':
-        print(get_dttm(),"\tFailed Task.refresh_statuses()")
+        log("\tFailed Task.refresh_statuses()")
         #test_result = False
         pass
 
     task.get_due_date()
     if task._status != 'Read':
-        print(get_dttm(),"\tFailed Task.get_due_date()")
+        log("\tFailed Task.get_due_date()")
         #test_result = False
         pass
 
@@ -577,13 +606,13 @@ def read_json_to_dict(path):
     #meta_file = dict()
     #meta_file['tasks'] = dict()
     #meta_file['update_dttm'] = get_dttm()
-    #print(meta_file)
+    #log(meta_file)
     data = {}
     if os.path.exists(path):
         with open(path, 'r') as f:
             data = json.load(f)
     else:
-        print(get_dttm(),"File",path,"not found.")
+        log("File " + path + " not found.")
         return {}
     return data
 
@@ -600,8 +629,8 @@ def write_dict_to_json(path,data_dict):
     return True
 
 def file_manager_test():
-    print("\n---Test---Test---Test---")
-    print(get_dttm(),"Begining File Manager Test")
+    #log("\n---Test---Test---Test---")
+    #log("Begining File Manager Test")
     path = params['test_dir_path']
     data = {
             "feature1":"Value1",
@@ -628,7 +657,7 @@ def press(button):
         new_task = app.getEntry("New Task")
         if new_task == '':
             app.popUp("Task is not specified",)
-        print(get_dttm(),"New task:", new_task)
+        log("New task:" + new_task)
     else:
         pass
     return False
@@ -653,45 +682,53 @@ def startup():
 # Execution
 startup()
 #Meta.add_task('new task')
-print(get_dttm(),"App is running.")
+log("App is running.")
 
+log("Current metadata state:")
+pp.pprint(dict_el_to_str(meta_file))
 
 cycle_cnt = 0
 def check_status():
     global cycle_cnt
     if cycle_cnt > 10:
-        print(get_dttm(),"Finishing app")
+        log("Finishing app")
         return False
     else:
         threading.Timer(5, check_status).start()
         cycle_cnt += 1
-        print(get_dttm(),"Cycle",cycle_cnt)
+        log("Cycle" + str(cycle_cnt))
     # Add whatever should be inside the cycle.
 
 #check_status()
 
 #################### Test Manager ####################
 def test_manager():
+    log("Starting test.")
     if file_manager_test():
-        print(get_dttm(),"File Manager test is passed.")
+        #log("File Manager test is passed.")
+        pass
     else:
-        print(get_dttm(),"!!! File Manager test is FAILED!")
+        log("!!! File Manager test is FAILED!")
 
     if task_test():
-        print(get_dttm(),"Task test is passed.")
+        #log("Task test is passed.")
+        pass
     else:
-        print(get_dttm(),"!!! Task test is FAILED!")
+        log("!!! Task test is FAILED!")
 
     if metadata_test():
-        print(get_dttm(),"Metadata test is passed.")
+        #log("Metadata test is passed.")
+        pass
     else:
-        print(get_dttm(),"!!! Metadata test is FAILED!")
+        log("!!! Metadata test is FAILED!")
 
     if time_functions_test():
-        print(get_dttm(),"Time Functions test is passed.")
+        #log("Time Functions test is passed.")
+        pass
     else:
-        print(get_dttm(),"!!! Time Functions test is FAILED!")
-
+        log("!!! Time Functions test is FAILED!")
+    log("Tests finished.")
     return True
 
 test_manager()
+
