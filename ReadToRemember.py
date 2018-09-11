@@ -103,11 +103,10 @@ def time_functions_test():
     return test_result
 
 #################### Parameters and GV ####################
-study_list = dict()# Содержит библиотеку материалов для запоминания
-normal_tasks_for_today = list() # Task_id
-overdue_tasks = list() # Task_id
+normal_tasks_for_today = set() # Task_id
+overdue_tasks = set() # Task_id
+all_tasks = set() # Task_id
 
-all_tasks = list() # Task_id
 meta_file = dict()
 list_of_tasks = {} # Collection of tasks objects for runtime
 
@@ -127,7 +126,7 @@ meta_template = {
                 'current_curve_stage':0,
                 'last_repeat_date':curr_date,
                 'next_repeat_date':curr_date,
-                'update_dttm':''
+                'update_dttm':curr_dttm
               }},
       'update_dttm':curr_dttm
 }
@@ -186,12 +185,13 @@ class Meta():
         task['priority'] = task_content['priority']
         task['create_dttm'] = get_dttm()
         task['current_curve_stage'] = 0
-        task['last_repeat_date'] = None
-        task['next_repeat_date'] = None #task_content['next_repeat_date']
+        task['last_repeat_date'] = get_date()
+        task['next_repeat_date'] = get_date() #task_content['next_repeat_date']
         task['update_dttm'] = get_dttm()
 
         meta_file['tasks'][task_id] = task
-        normal_tasks_for_today.append(task_id)
+        Meta.refresh_lists(task_id)
+        
         return True
 
     def remove_task(task_id):
@@ -206,54 +206,45 @@ class Meta():
         Read metadata from json file on disc.
         """
         global meta_file
-        global normal_tasks_for_today
-        global overdued_tasks
-        global all_tasks
         meta_file = read_json_to_dict(params['meta_file_path'])
         if meta_file=={}:
             log("Metadata could not be read. Creating new metadata file " + params['meta_file_path'])
             global meta_template
             meta_file = dict(meta_template)
-
-        today = get_date()
-
+        Meta.refresh_meta()
+        return True
+        
+    def refresh_meta():
+        global overdued_tasks
+        global normal_tasks_for_today
+        global all_tasks
+        
         # Зачитать таски, проапдейтить статусы
         for task_id, task in meta_file['tasks'].items():
             meta_file['tasks'][task_id] = Task.refresh_statuses(task)
-            next_repeat_date = task['next_repeat_date']
             
-            all_tasks.append(task_id)
-            
-            if days_diff(next_repeat_date, today) == 0:
-                # Doing today
-                normal_tasks_for_today.append(task_id)
-            elif days_diff(next_repeat_date, today) < 0:
-                # Overdued
-                overdued_tasks.append(task_id)
-            else:
-                # Doing not today
-                pass
-
-        """
-        lcs = learning_curve[task_content['current_curve_stage']] # Learning Curve Stage
-        if ((task_content['next_repeat_date'] < today
-             and add_days(task_content['last_repeat_date'],lcs) == today)
-            or task.next_repeat_date == today):
-            # Делаем сегодня
-            task.next_repeat_date = today
-            task.update_dttm = today_dttm # Вынести в отдельную функцию все апдейты?
-            normal_tasks_for_today.append(task)
-            pass
-        elif task_content['next_repeat_date'] < today and add_days(task_content['last_repeat_date'],lcs) < today:
-            # Опоздал, штрафная
-            overdue_tasks.append(task_id)
-            task.mark_as_read(task_id)
-        else:
-            # Время еще не пришло
-            pass
-        all_tasks.append(task_id)
-        """
+        Meta.refresh_lists()
         return True
+
+            
+    def refresh_lists(task_id = None):
+        def add_task_to_lists(t_id):
+            today = get_date()
+            all_tasks.add(t_id)
+            next_repeat_date = meta_file['tasks'][t_id]['next_repeat_date']
+            if days_diff(next_repeat_date, today) == 0:
+                normal_tasks_for_today.add(t_id)
+            elif days_diff(next_repeat_date, today) < 0:
+                overdued_tasks.add(t_id)
+            return True
+        
+        if task_id == None:
+            for k in meta_file['tasks'].keys():
+              add_task_to_lists(k)  
+            return True
+        else:
+            add_task_to_lists(task_id)     
+            return True
 
     def write_meta():
         """
@@ -404,6 +395,7 @@ class Task():
             - Learning curve status
         """
         task['update_dttm'] = get_dttm()
+
         return task
 
 def task_test():
