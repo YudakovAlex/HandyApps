@@ -47,17 +47,18 @@ import os
 import pprint
 pp = pprint.PrettyPrinter(indent=2)
 
-def log(text,lvl=0):
+def log(text,lvl=0,indent=0):
+    line_start = str(get_dttm()) + "\t" * indent
     if type(text) == list:
         str_text = ""
         for el in text:
             str_text = str_text + " " + str(el)
-        print(get_dttm(),str_text)
+        print(line_start,str_text)
     elif type(text) == dict:
-        print(get_dttm())
+        print(line_start)
         pp.pprint(dict_el_to_str(text))
     else:
-        print(get_dttm(),text)
+        print(line_start,text)
     return False
 
 #################### Time Functions ####################
@@ -88,22 +89,22 @@ def time_functions_test():
 
     date1 = get_date()
     if not date1:
-        log("\tFailed get_date()")
+        log("Failed get_date()",indent=1)
         test_result = False
 
     date2 = add_days(date1,3)
     if not days_diff(date1,date2) == 3:
-        log("\tFailed add_days() or days_diff()")
+        log("Failed add_days() or days_diff()",indent=1)
         test_result = False
 
     dttm1 = get_dttm()
     if not date1:
-        log("\tFailed get_dttm()")
+        log("Failed get_dttm()",indent=1)
         test_result = False
 
     dttm2 = add_seconds(dttm1,3)
     if not seconds_diff(dttm1,dttm2) == -3:
-        log("\tFailed add_seconds() or seconds_diff()")
+        log("Failed add_seconds() or seconds_diff()",indent=1)
         test_result = False
 
     return test_result
@@ -310,12 +311,12 @@ def metadata_test():
 
     add_task = Meta.add_task(dict(Task.task_template),task_id=test_task_id)
     if not add_task:
-        log("\tFailed Meta.add_task()")
+        log("Failed Meta.add_task()",indent=1)
         test_result = False
 
     remove_task = Meta.remove_task(test_task_id)
     if not remove_task:
-        log("\tFailed Meta.remove_task()")
+        log("Failed Meta.remove_task()",indent=1)
         test_result = False
 
     # Закоментил, чтобы 2 раза на старте не читал.
@@ -326,17 +327,17 @@ def metadata_test():
 
     get_tasks_for_today = Meta.get_tasks_for_today()
     if not get_tasks_for_today:
-        log("\tFailed Meta.get_tasks_for_today()")
+        log("Failed Meta.get_tasks_for_today()",indent=1)
         test_result = False
 
     get_tasks_for_date = Meta.get_tasks_for_date(get_date())
     if not get_tasks_for_date:
-        log("\tFailed Meta.get_tasks_for_date()")
+        log("Failed Meta.get_tasks_for_date()",indent=1)
         test_result = False
 
     get_full_list = Meta.get_full_list()
     if not get_full_list:
-        log("\tFailed Meta.get_full_list()")
+        log("Failed Meta.get_full_list()",indent=1)
         test_result = False
 
     return test_result
@@ -525,57 +526,57 @@ def task_test():
     test_result = True
 
     if not isinstance(task,Task):
-        log("\tFailed to create Task object")
+        log("Failed to create Task object",indent=1)
         test_result = False
 
     task.mark_as_read()
     if task._status != 'Read':
-        log("\tFailed Task.mark_as_read()")
+        log("Failed Task.mark_as_read()",indent=1)
         test_result = False
 
     task.mark_as_overdue()
     if task._status != 'Overdue':
-        log("\tFailed Task.mark_as_overdue()")
+        log("Failed Task.mark_as_overdue()",indent=1)
         test_result = False
 
     task.mark_as_complete()
     if task._status != 'Complete':
-        log("\tFailed Task.mark_as_complete()")
+        log("Failed Task.mark_as_complete()",indent=1)
         test_result = False
 
     task.mark_as_canceled()
     if task._status != 'Cancelled':
-        log("\tFailed Task.mark_as_canceled()")
+        log("Failed Task.mark_as_canceled()",indent=1)
         test_result = False
 
     task.delay_task()
     if task._status != 'Delayed':
-        log("\tFailed Task.delay_task()")
+        log("Failed Task.delay_task()",indent=1)
         test_result = False
 
     task.mark_as_new()
     if task._status != 'New':
-        log("\tFailed Task.mark_as_new()")
+        log("Failed Task.mark_as_new()",indent=1)
         test_result = False
 
     task_content2 = task.task_to_dict()
     if task_content != task_content2:
-        log("\tFailed Task.task_to_dict()")
-        log("\nSource template")
+        log("\tFailed Task.task_to_dict()",indent=1)
+        log("\nSource template",indent=1)
         pp.pprint(dict_el_to_str(task_content))
-        log("\nTarget template")
+        log("\nTarget template",indent=1)
         pp.pprint(dict_el_to_str(task_content2))
         test_result = False
         
     task.refresh_statuses()
     if task._status != 'Read':
-        log("\tFailed Task.refresh_statuses()")
+        log("Failed Task.refresh_statuses()",indent=1)
         #test_result = False
         pass
 
     task.get_due_date()
     if task._status != 'Read':
-        log("\tFailed Task.get_due_date()")
+        log("Failed Task.get_due_date()",indent=1)
         #test_result = False
         pass
 
