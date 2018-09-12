@@ -113,31 +113,11 @@ list_of_tasks = {} # Collection of tasks objects for runtime
 curr_date = get_date()
 curr_dttm = get_dttm()
 
-# Meta Template
-meta_template = {
-      'tasks':{
-              0:{#Task_id
-                'name':'Welcom to ReadToRemeber!',
-                'type':'',
-                'body':'',
-                'status':'New',
-                'priority':0,
-                'create_dttm':curr_dttm,
-                'current_curve_stage':0,
-                'last_repeat_date':curr_date,
-                'next_repeat_date':curr_date,
-                'update_dttm':curr_dttm
-              }},
-      'update_dttm':curr_dttm
-}
-
 meta_file_path = os.environ['APPDATA'] + '\\HandyApps\\RtR_Data\\meta.json'
 test_dir_path = os.environ['APPDATA'] + '\\HandyApps\\Test\\file_manager_test.json'
 params = {
         'lib_path':'',
-        #'meta_file_path':'D:\\Projects\\HandyApps\\RtR_Data\\meta.json',
         'meta_file_path':meta_file_path,
-        #'test_dir_path':'D:\\Projects\\HandyApps\\Test\\file_manager_test.json',
         'test_dir_path':test_dir_path,
         'docs_folder':''
         }
@@ -166,9 +146,26 @@ class Meta():
         - App logs and history
         - Task data, except attached files
     """
+    meta_template = {
+          'tasks':{
+                  0:{#Task_id
+                    'name':'Welcom to ReadToRemeber!',
+                    'type':'',
+                    'body':'',
+                    'status':'New',
+                    'priority':0,
+                    'create_dttm':curr_dttm,
+                    'current_curve_stage':0,
+                    'last_repeat_date':curr_date,
+                    'next_repeat_date':curr_date,
+                    'update_dttm':curr_dttm
+                  }},
+          'update_dttm':curr_dttm
+    }
+    
     def add_task(task_content,priority=1,task_id=None):
         """
-        Add task
+        Add task to metadata.
         """        
         global meta_file
         if task_id==None:
@@ -176,7 +173,6 @@ class Meta():
                 task_id = list(meta_file['tasks'].keys())[-1] + 1
             else:
                 task_id = 0
-
         task = dict(Task.task_template)
         task['name'] = task_content['name']
         task['type'] = task_content['type']
@@ -196,38 +192,41 @@ class Meta():
 
     def remove_task(task_id):
         """
-        Delete task
+        Delete task from metadata.
         """
-        meta_file.pop(task_id, None)
+        meta_file['tasks'].pop(task_id)
         return True
 
-    def read_meta_file():
+    def read_meta_file(path):
         """
         Read metadata from json file on disc.
         """
         global meta_file
-        meta_file = read_json_to_dict(params['meta_file_path'])
+        meta_file = read_json_to_dict(path)
         if meta_file=={}:
-            log("Metadata could not be read. Creating new metadata file " + params['meta_file_path'])
-            global meta_template
-            meta_file = dict(meta_template)
+            log("Metadata could not be read. Creating new metadata file " + path)
+            meta_file = dict(Meta.meta_template)
         Meta.refresh_meta()
         return True
         
     def refresh_meta():
+        """
+        Refreshes all metadata and task lists.
+        """
         global overdued_tasks
         global normal_tasks_for_today
         global all_tasks
-        
         # Зачитать таски, проапдейтить статусы
         for task_id, task in meta_file['tasks'].items():
             meta_file['tasks'][task_id] = Task.refresh_statuses(task)
             
         Meta.refresh_lists()
         return True
-
             
     def refresh_lists(task_id = None):
+        """
+        Refreshes task lists.
+        """
         def add_task_to_lists(t_id):
             today = get_date()
             all_tasks.add(t_id)
@@ -246,12 +245,12 @@ class Meta():
             add_task_to_lists(task_id)     
             return True
 
-    def write_meta():
+    def write_meta(path):
         """
-        Dump metadata on disc as json.
+        Dump metadata on disc.
         """
         global meta_file
-        write_dict_to_json(params['meta_file_path'],meta_file)
+        write_dict_to_json(path,meta_file)
         return True
 
 def metadata_test():
@@ -264,7 +263,7 @@ def metadata_test():
         test_result = False
 
     remove_task = Meta.remove_task(test_task_id)
-    if not remove_task:
+    if (not remove_task or list(meta_file['tasks'].keys())[-1] == test_task_id):
         log("Failed Meta.remove_task()",indent=1)
         test_result = False
 
@@ -276,6 +275,8 @@ class Task():
     Holds methods related to managing tasks.
     Decided not to implement Task as objects, but to process as dicts.
         This way it will require less processing and should be faster.
+    Should rewrite to objects in the future, for better decoupling 
+        and standartization.
     """
     task_template = {
       'name':'', #str
@@ -293,27 +294,32 @@ class Task():
     def create_task(task_data,priority=1):
         """
         Добавить задачу в список
-
         Таск добавляется наподобие того как реализовано в Wunderlist:
             - Введенный текст становится заголовком
             - Внутри таска можно добавлять файлы, подзадачи и т.п.
         При добавлении таска "как файла", название файла
             становится заголовком таска (корректируемый).
-
         """
         def get_task_body(t):
-            return (None,None)
+            """
+            Determines type of message body and packages it.
+            """
+            task_type = None
+            task_body = None
+            
+            return (task_type,task_body)
 
         def get_task_header(t):
             """
-            Determines name of the task
+            Determines name of the task.
             """
-            pass
+            header = ""
+            return header
 
         today = get_date()
         today_dttm = get_dttm()
         task_header = get_task_header(task_data)
-        (task_body, task_type) = get_task_body(task_data)
+        (task_type,task_body) = get_task_body(task_data)
 
         # Task Template
         task = dict(Task.task_template)
@@ -395,7 +401,6 @@ class Task():
             - Learning curve status
         """
         task['update_dttm'] = get_dttm()
-
         return task
 
 def task_test():
@@ -461,6 +466,9 @@ def dict_el_to_str(d):
 
 #################### File Manager ####################
 def read_json_to_dict(path):
+    """
+    Read json file and return dict.
+    """
     data = {}
     if os.path.exists(path):
         with open(path, 'r') as f:
@@ -474,10 +482,8 @@ def write_dict_to_json(path,data_dict):
     """
     Writes dict to file on disk.
     """
-    # Make dir first
     if not os.path.exists(path[0:path.rfind("\\")]):
         os.makedirs(path[0:path.rfind("\\")])
-
     with open(path, 'w') as f:
         json.dump(dict_el_to_str(data_dict), f, ensure_ascii=False)
     return True
@@ -527,7 +533,7 @@ def startup():
     Подготовка данных к работе приложения
     Зачитывание метаданных
     """
-    meta_read_successful = Meta.read_meta_file()
+    meta_read_successful = Meta.read_meta_file(params['meta_file_path'])
     if not meta_read_successful:
         return False
     # Start_GUI() - to be added
