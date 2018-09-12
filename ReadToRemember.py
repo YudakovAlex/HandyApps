@@ -45,6 +45,7 @@ from datetime import timedelta
 import json
 import os
 import pprint
+
 pp = pprint.PrettyPrinter(indent=2)
 
 def log(text,lvl=0,indent=0):
@@ -510,6 +511,16 @@ def file_manager_test():
         return False
 
 #################### GUI Manager ####################
+from kivy.app import App
+from kivy.uix.button import Button
+
+class TestApp(App):
+    def build(self):
+        return Button(text='Hello World')
+
+TestApp().run()
+
+"""
 def press(button):
     global app
     if button == "Add":
@@ -520,6 +531,7 @@ def press(button):
     else:
         pass
     return False
+"""
 
 #with gui("Study Materials", "400x200", font={'size':18}) as app:
 #    app.addLabel("title", "Plan for today:")
