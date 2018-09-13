@@ -46,6 +46,7 @@ import json
 import os
 import pprint
 
+
 pp = pprint.PrettyPrinter(indent=2)
 
 def log(text,lvl=0,indent=0):
@@ -205,7 +206,7 @@ class Meta():
         global meta_file
         meta_file = read_json_to_dict(path)
         if meta_file=={}:
-            log("Metadata could not be read. Creating new metadata file " + path)
+            log("Metadata file could not be read. Creating new metadata file " + path)
             meta_file = dict(Meta.meta_template)
         Meta.refresh_meta()
         return True
@@ -254,6 +255,7 @@ class Meta():
         write_dict_to_json(path,meta_file)
         return True
 
+meta_file = dict(Meta.meta_template) # So that it will not be empty for tests
 def metadata_test():
     test_result = True
     test_task_id = -1
@@ -381,6 +383,8 @@ class Task():
     def delay_task(task,days):
         """
         Delay task for specified number of days
+            - Add Reasons for delaying.
+            - Categorize reasons for future analysis
         """
         task['status'] = 'Delayed'
         task['next_repeat_date'] = add_days(get_date(), days)
@@ -511,14 +515,18 @@ def file_manager_test():
         return False
 
 #################### GUI Manager ####################
+#https://kivy.org/doc/stable/installation/installation-windows.html
+import kivy
+kivy.require('1.10.1')
+
 from kivy.app import App
 from kivy.uix.button import Button
+from kivy.uix.label import Label
 
-class TestApp(App):
+class GUI(App):
     def build(self):
-        return Button(text='Hello World')
-
-TestApp().run()
+        return Label(text='Hello world')
+   
 
 """
 def press(button):
@@ -537,39 +545,6 @@ def press(button):
 #    app.addLabel("title", "Plan for today:")
 #    app.addLabelEntry("New Task")
 #    app.addButtons(["Add"], press)
-
-#################### Runtime Manager ####################
-
-def startup():
-    """
-    Подготовка данных к работе приложения
-    Зачитывание метаданных
-    """
-    meta_read_successful = Meta.read_meta_file(params['meta_file_path'])
-    if not meta_read_successful:
-        return False
-    # Start_GUI() - to be added
-    return True
-# Execution
-startup()
-log("App is running.")
-
-log("Current metadata state:")
-pp.pprint(dict_el_to_str(meta_file))
-
-cycle_cnt = 0
-def check_status():
-    global cycle_cnt
-    if cycle_cnt > 10:
-        log("Finishing app")
-        return False
-    else:
-        threading.Timer(5, check_status).start()
-        cycle_cnt += 1
-        log("Cycle" + str(cycle_cnt))
-    # Add whatever should be inside the cycle.
-
-#check_status()
 
 #################### Test Manager ####################
 def test_manager():
@@ -595,6 +570,41 @@ def test_manager():
         log("!!! Time Functions test is FAILED!")
     log("Tests finished.")
     return True
-
 test_manager()
 
+#################### Runtime Manager ####################
+
+def prepare_backend():
+    """
+    Подготовка данных к работе приложения
+    Зачитывание метаданных
+    """
+    meta_read_successful = Meta.read_meta_file(params['meta_file_path'])
+    if not meta_read_successful:
+        return False
+    # Start_GUI() - to be added
+    return True
+
+# Execution
+prepare_backend()
+log("App is running.")
+log("Current metadata state:")
+pp.pprint(dict_el_to_str(meta_file))
+
+if __name__ == '__main__':
+    GUI().run()
+
+#App.get_running_app().stop()
+cycle_cnt = 0
+def check_status():
+    global cycle_cnt
+    if cycle_cnt > 10:
+        log("Finishing app")
+        return False
+    else:
+        threading.Timer(5, check_status).start()
+        cycle_cnt += 1
+        log("Cycle" + str(cycle_cnt))
+    # Add whatever should be inside the cycle.
+
+#check_status()
