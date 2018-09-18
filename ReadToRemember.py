@@ -255,7 +255,6 @@ class Meta():
         write_dict_to_json(path,meta_file)
         return True
 
-meta_file = dict(Meta.meta_template) # So that it will not be empty for tests
 def metadata_test():
     test_result = True
     test_task_id = -1
@@ -516,17 +515,61 @@ def file_manager_test():
 
 #################### GUI Manager ####################
 #https://kivy.org/doc/stable/installation/installation-windows.html
+
+os.environ['KIVY_HOME'] = os.environ['APPDATA'] + '\\HandyApps\\RtR_Data\\'
+
 import kivy
 kivy.require('1.10.1')
 
 from kivy.app import App
-from kivy.uix.button import Button
+from kivy.uix.widget import Widget
 from kivy.uix.label import Label
+from kivy.uix.gridlayout import GridLayout
+#from kivy.config import Config
+#from kivy.base import EventLoop
+#from kivy.animation import Animation
+from kivy.properties import ObjectProperty, NumericProperty, StringProperty
+#from kivy.uix.image import Image
+#from settingfile import SettingFile
+#from settingmidi import SettingMIDI
+#from keyboard import Keyboard
+#from mysettingspanel import MySettingsPanel
+
+VERSION = '1.0'
+
+class GUI_Main_Screen(GridLayout):
+    def __init__(self, **kwargs):
+        super(GUI_Main_Screen,self).__init__(**kwargs)
+        self.cols = 2
+        self.add_widget(Label(text='Hello'))
+        self.add_widget(Label(text='World'))
+        self.add_widget(Label(text='Hello1'))
+        self.add_widget(Label(text='World2'))
+
+
+class GUI_Main_Menu(Widget):
+    app = ObjectProperty(None)
+    float_layout = ObjectProperty(None)
+    pitch_lock_button = ObjectProperty(None)
+    y_axis_volume_button = ObjectProperty(None)
+    setting_button = ObjectProperty(None)
+    look_button = ObjectProperty(None)
+    feedback_wall = ObjectProperty(None)
+    scale_keywidth_touch_positions = {}
+    version = StringProperty(VERSION)
+
+    def __init__(self, **kwargs):
+        super(GUI_Main_Menu, self).__init__(**kwargs) # don't know if this is necessary?
+        
+
 
 class GUI(App):
+    title = 'ReadToRemeber'
     def build(self):
-        return Label(text='Hello world')
-   
+        #self.widget = GUI_Main_Screen(app=self)
+        #return self.widget
+        return GUI_Main_Screen()
+    
 
 """
 def press(button):
@@ -548,29 +591,41 @@ def press(button):
 
 #################### Test Manager ####################
 def test_manager():
-    log("Starting test.")
+    log("Starting tests.")
+    passed_tests = []
+    failed_tests = []
+    global meta_file
+    meta_file = dict(Meta.meta_template) # So that it will not be empty for tests
+    
     if file_manager_test():
-        pass
+        passed_tests.append("File manager")
     else:
+        failed_tests.append("File manager")
         log("!!! File Manager test is FAILED!")
 
     if task_test():
-        pass
+        passed_tests.append("Task class")
     else:
+        failed_tests.append("Task class")
         log("!!! Task test is FAILED!")
 
     if metadata_test():
-        pass
+        passed_tests.append("Metadata class")
     else:
+        failed_tests.append("Metadata class")
         log("!!! Metadata test is FAILED!")
 
     if time_functions_test():
-        pass
+        passed_tests.append("Time functions")
     else:
+        failed_tests.append("Time functions")
         log("!!! Time Functions test is FAILED!")
+    
+    del meta_file
+    log(["Failed:",failed_tests])
+    log(["Pssed:",passed_tests])
     log("Tests finished.")
     return True
-test_manager()
 
 #################### Runtime Manager ####################
 
@@ -586,10 +641,11 @@ def prepare_backend():
     return True
 
 # Execution
-prepare_backend()
-log("App is running.")
-log("Current metadata state:")
-pp.pprint(dict_el_to_str(meta_file))
+if test_manager():
+    prepare_backend()
+    log("App is running.")
+    log("Current metadata state:")
+    pp.pprint(dict_el_to_str(meta_file))
 
 if __name__ == '__main__':
     GUI().run()
