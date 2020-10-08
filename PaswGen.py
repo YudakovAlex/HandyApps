@@ -23,9 +23,9 @@ def pas(length,
 
 def gen_pasw(cnt=10,lngth=12):
     pw = []
-    
     for i in range(cnt):
         pw.append(pas(lngth))
     return pw
         
-print(gen_pasw())
+
+print("\n".join(gen_pasw(lngth=15)))
